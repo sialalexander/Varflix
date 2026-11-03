@@ -1,0 +1,19 @@
+# Default ignored files
+/shelf/
+/.idea/workspace.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# All target folders recursivly in whole project are irgnored
+**/target/
+# The output folder is excluded
+output/
+# The output folder is excluded
+.idea/
+# All json and txt files are exluded
+*.json
+*.txt
+# All csv files are excldued
+*.csv
