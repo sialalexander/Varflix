@@ -1,52 +1,51 @@
-Requirement Preprocessor
+# Requirement Preprocessor
 
--------------------------------------
-External resources
-Library 
-org.apache.opennlp - opennlp-tools (version 2.5.12)
-Used for Removing Stop words and lemmatisation
+## External Resources
 
+### Libraries
+- `org.apache.opennlp` - `opennlp-tools` (version 2.5.12)
+    - Used for removing stop words and lemmatization
+- `com.fasterxml.jackson.core` - `jackson-databind` (version 2.15.2)
 
-com.fasterxml.jackson.core jackson-databind(verison 2.15.2)
+### Stop Word List
+German and English
 
+The lists are copied into the resources folder:
+- German: https://github.com/stopwords-iso/stopwords-de
+- English: https://github.com/stopwords-iso/stopwords-en
 
+For the correct analysis of software requirements, standard stop word lists were cleaned. Certain words must **not** be removed, as otherwise the logic, binding nature, and domain context of the requirements would be destroyed.
 
--------------------------------------
-Stop Word List
-German and Elgisch
+The following word groups were removed from the JSON files (`stopwords-de.json` / `stopwords-en.json`):
 
-The lsits are just copoied into the resource folder
-German: https://github.com/stopwords-iso/stopwords-de
-English: https://github.com/stopwords-iso/stopwords-en
+- **Modal Verbs (Binding Nature & Priority):**
+    - **DE:** muss, musst, müssen, soll, sollen, sollte, kann, können, darf, dürfen, wird, werden, würde
+    - **EN:** shall, must, should, can, cannot, could, may, might, will, won't, would, ought
 
-Für die korrekte Analyse von Softwareanforderungen wurden Standard-Stopwortlisten bereinigt. Bestimmte Wörter dürfen **nicht** entfernt werden, da sonst die Logik, Verbindlichkeit und der Fachkontext der Requirements zerstört werden.
+- **Negations (Logic Preservation):**
+    - **DE:** nicht, nichts, kein, keine, keinem, keinen, keiner, keines, nie, niemand
+    - **EN:** not, no, none, nothing, neither, nor, never
 
-Folgende Wortgruppen wurden aus den JSON-Dateien (`stopwords-de.json` / `stopwords-en.json`) entfernt:
-* **Modalverben (Verbindlichkeit & Priorität):**
-    * *DE:* muss, musst, müssen, soll, sollen, sollte, kann, können, darf, dürfen, wird, werden, würde
-    * *EN:* shall, must, should, can, cannot, could, may, might, will, won't, would, ought
-* **Negationen (Logik-Erhaltung):**
-    * *DE:* nicht, nichts, kein, keine, keinem, keinen, keiner, keines, nie, niemand
-    * *EN:* not, no, none, nothing, neither, nor, never
-* **Domänenspezifische Verben & Substantive (Software Engineering):**
-    * *DE:* machen, tun, recht, ordnung
-    * *EN:* system, test, describe, need, specify, use, value, problem, information, results
+- **Domain-Specific Verbs & Nouns (Software Engineering):**
+    - **DE:** machen, tun, recht, ordnung
+    - **EN:** system, test, describe, need, specify, use, value, problem, information, results
 
+### NLP Models Used (`src/main/resources/models/`)
 
+The binary files required for POS tagging (Part of Speech) and lemmatization come from the official open-source models of the **Apache OpenNLP** project:
 
--------------------------------------
-### Verwendete NLP-Modelle (`src/main/resources/models/`)
-Die für das POS-Tagging (Part of SPeech) und die Lemmatisierung benötigten Binärdateien stammen von den offiziellen Open-Source-Modellen des **Apache OpenNLP**-Projekts:
-* **Deutsch:**
-    * `de-pos-maxent.bin` (POS-Modell)
-    * `de-lemmatizer.bin` (Lemmatizer-Modell)
-* **Englisch:**
-    * `en-pos-maxent.bin` (POS-Modell)
-    * `en-lemmatizer.bin` (Lemmatizer-Modell)
+- **German:**
+    - `de-pos-maxent.bin` (POS model)
+    - `de-lemmatizer.bin` (Lemmatizer model)
 
-**Quelle / Downloads:** [Apache OpenNLP Models Documentation & Download](https://opennlp.apache.org/models.html)
-https://central.sonatype.com/artifact/org.apache.opennlp/opennlp-models-lemmatizer-de
-https://central.sonatype.com/artifact/org.apache.opennlp/opennlp-models-pos-de
-https://central.sonatype.com/artifact/org.apache.opennlp/opennlp-models-lemmatizer-en
-https://central.sonatype.com/artifact/org.apache.opennlp/opennlp-models-pos-en
-Verison 1.3.0
+- **English:**
+    - `en-pos-maxent.bin` (POS model)
+    - `en-lemmatizer.bin` (Lemmatizer model)
+
+**Source / Downloads:**
+- [Apache OpenNLP Models Documentation & Download](https://opennlp.apache.org/models.html)
+- https://central.sonatype.com/artifact/org.apache.opennlp/opennlp-models-lemmatizer-de
+- https://central.sonatype.com/artifact/org.apache.opennlp/opennlp-models-pos-de
+- https://central.sonatype.com/artifact/org.apache.opennlp/opennlp-models-lemmatizer-en
+- https://central.sonatype.com/artifact/org.apache.opennlp/opennlp-models-pos-en
+- Version 1.3.0
