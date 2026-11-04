@@ -6,6 +6,7 @@ import varflixModel.IVariability;
 import varflixModel.IVariant;
 import varflixModel.IVariabilityGroup;
 
+
 public class RequirementsVariabilityExtractor <V extends IVariant, E extends IVariability>
         implements IVariabilityExtractor<V, E> {
 
