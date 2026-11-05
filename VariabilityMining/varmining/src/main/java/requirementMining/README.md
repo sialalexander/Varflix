@@ -49,3 +49,9 @@ The binary files required for POS tagging (Part of Speech) and lemmatization com
 - https://central.sonatype.com/artifact/org.apache.opennlp/opennlp-models-lemmatizer-en
 - https://central.sonatype.com/artifact/org.apache.opennlp/opennlp-models-pos-en
 - Version 1.3.0
+
+
+# Similariy Network Calculuator
+TODO -> add infos about vec files
+TODO -> add used libraries
+....
