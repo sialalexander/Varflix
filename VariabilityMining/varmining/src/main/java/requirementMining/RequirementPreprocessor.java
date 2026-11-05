@@ -19,6 +19,9 @@ import java.util.stream.Collectors;
 
 public class RequirementPreprocessor {
 
+    //TODO -> make all methods private, only the two main methods public
+    //TODO -> standardize method comments / descriptions
+
     public enum Language {
         ENGLISH("requirementMining/models/en-pos-maxent.bin",
                 "requirementMining/models/en-lemmatizer.bin",
