@@ -92,6 +92,7 @@
             <artifactId>gson-extras</artifactId>
             <version>2.13.2-rc1</version>
         </dependency>
+        <!--..................................RequirementsMining Extensions..................................-->
         <!-- Apache OpenNLP Core Tools -->
         <dependency>
             <groupId>org.apache.opennlp</groupId>
@@ -104,6 +105,25 @@
             <artifactId>jackson-databind</artifactId>
             <version>2.15.2</version>
         </dependency>
+        <!-- Deeplearning4j for Word Embeddings (Word2Vec / FastText loader) -->
+        <dependency>
+            <groupId>org.deeplearning4j</groupId>
+            <artifactId>deeplearning4j-nlp</artifactId>
+            <version>1.0.0-M2.1</version>
+        </dependency>
+        <!-- ND4J Native Backend -->
+        <dependency>
+            <groupId>org.nd4j</groupId>
+            <artifactId>nd4j-native-platform</artifactId>
+            <version>1.0.0-M2.1</version>
+        </dependency>
+        <!-- Vektor-Similarities (Cos-Similarity) -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-math3</artifactId>
+            <version>3.6.1</version>
+        </dependency>
+        <!--..................................RequirementsMining Extensions..................................-->
     </dependencies>
 
     <build>

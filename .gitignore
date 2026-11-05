@@ -17,3 +17,7 @@ output/
 *.txt
 # All csv files are excldued
 *.csv
+# Vec files (too big for github)
+*.vec
+# Temporary vec files
+*trimmed.vec
