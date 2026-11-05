@@ -55,3 +55,4 @@ The binary files required for POS tagging (Part of Speech) and lemmatization com
 TODO -> add infos about vec files
 TODO -> add used libraries
 ....
+https://fasttext.cc/docs/en/pretrained-vectors.html
