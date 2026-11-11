@@ -1,4 +1,4 @@
-package variabilityMining;
+package requirementMining.helper;
 
 import java.util.Arrays;
 

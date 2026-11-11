@@ -56,3 +56,10 @@ TODO -> add infos about vec files
 TODO -> add used libraries
 ....
 https://fasttext.cc/docs/en/pretrained-vectors.html
+German and englisch
+
+To big - can not be included int the rep
+Only incldued in gitginoere -> have to added manually after donwload
+
+Mention that during running a wiki.xx.trimmed.vec is created
+It is shortened for every run. For better performance.
