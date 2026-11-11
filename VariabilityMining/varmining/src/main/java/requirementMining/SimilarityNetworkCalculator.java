@@ -10,16 +10,35 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+/**
+ * Description: Calculates requirement similarity matrices using BM25+ scoring combined with semantic word embeddings.
+ */
 public class SimilarityNetworkCalculator {
 
-    //This class provides methods to load and process word embeddings. It uses the Word2Vec model from DeepLearning4j.
+    /**
+     * Description: Provides methods to load and process word embeddings using the Word2Vec model from DeepLearning4j.
+     */
     public static class WordEmbeddingProvider {
         private final Word2Vec word2Vec;
 
+        /**
+         * Description: Initializes the WordEmbeddingProvider by loading the Word2Vec model from the specified file path.
+         * Example: new WordEmbeddingProvider("path/to/model.vec")
+         *
+         * @param modelPath The path to the pre-trained Word2Vec model file.
+         */
         public WordEmbeddingProvider(String modelPath) {
             this.word2Vec = WordVectorSerializer.readWord2VecModel(new File(modelPath));
         }
 
+        /**
+         * Description: Retrieves the vector representation (coordinates in semantic space) for a given word from the Word2Vec model.
+         * Returns a zero vector if the word is not present in the vocabulary.
+         * Example: getVector("door") -> [0.12, -0.45, 0.88, ... ] (Array with 300 values)
+         *
+         * @param word The word for which to retrieve the vector.
+         * @return An array of doubles representing the word vector.
+         */
         public double[] getVector(String word) {
             if (word2Vec.hasWord(word)) {
                 return word2Vec.getWordVector(word);
@@ -27,10 +46,26 @@ public class SimilarityNetworkCalculator {
             return new double[word2Vec.getLayerSize()];
         }
 
+        /**
+         * Description: Checks whether the specified word exists in the Word2Vec model's vocabulary.
+         * Example: hasWord("door") -> Returns true
+         *
+         * @param word The word to check.
+         * @return True if the word exists in the vocabulary, false otherwise.
+         */
         public boolean hasWord(String word) {
             return word2Vec.hasWord(word);
         }
 
+        /**
+         * Description: Measures the angle between two vectors in space. 1.0 means parallel (identical meaning),
+         * 0.0 means orthogonal (unrelated), and -1.0 means opposite.
+         * Example: calculateCosineSimilarity([vector for "door"], [vector for "window"]) -> 0.75 (high semantic similarity)
+         *
+         * @param vecA The first vector array.
+         * @param vecB The second vector array.
+         * @return The cosine similarity score between the two vectors.
+         */
         public double calculateCosineSimilarity(double[] vecA, double[] vecB) {
             double dotProduct = 0.0;
             double normA = 0.0;
@@ -45,10 +80,19 @@ public class SimilarityNetworkCalculator {
         }
     }
 
-    //This class calculates the word weights based on the document frequency and syntactic information. It uses the IDF (inverse document frequency) formula.
+    /**
+     * Description: Calculates word weights based on document frequency (IDF) and syntactic information.
+     */
     public static class WordWeighting {
         private final Map<String, Double> idfMap = new HashMap<>();
 
+        /**
+         * Description: Initializes the WordWeighting instance by computing Inverse Document Frequency (IDF) scores
+         * for all unique lemmas across the requirements list. Rarer words across the dataset receive higher importance.
+         * Example: With 10 documents, if "door" appears in 5 -> IDF = ~1.2. If "unlock" appears in 1 -> IDF = ~2.8.
+         *
+         * @param requirements The list of preprocessed NLPResult requirements.
+         */
         public WordWeighting(List<NLPResult> requirements) {
             int documentCount = requirements.size();
             Map<String, Integer> documentFrequencyMap = new HashMap<>();
@@ -69,7 +113,15 @@ public class SimilarityNetworkCalculator {
             }
         }
 
-        //This method calculates the weight for a given word based on its document frequency and syntactic information.
+        /**
+         * Description: Calculates the final weight for a word lemma by combining its document frequency (IDF)
+         * and syntactic Part-Of-Speech tag (nouns and verbs receive a multiplier because they form the core meaning).
+         * Example: getWeight("door", "NN") -> IDF (1.2) * Noun-Factor (1.5) = final weight 1.8.
+         *
+         * @param lemma The normalized word lemma.
+         * @param posTag The Part-Of-Speech tag of the word.
+         * @return The calculated weight for the word.
+         */
         public double getWeight(String lemma, String posTag) {
             String lowerLemma = lemma.toLowerCase();
             double baseIdf = idfMap.getOrDefault(lowerLemma, 1.0);
@@ -86,15 +138,25 @@ public class SimilarityNetworkCalculator {
         }
     }
 
-    //this class calculates the similarity matrix using BM25Plus and semantic similarity
+    /**
+     * Description: Calculates the similarity matrix using BM25+ and semantic similarity.
+     */
     private static class BM25PlusSimilarityCalculator {
+        //TODO move to config class / or config file
         private final double k1 = 1.5;
         private final double b = 0.75;
         private final double delta = 1.0;
 
-        //This method calculates the similarity matrix using BM25Plus and semantic similarity.
-        //It first calculates the raw BM25 scores for each pair of requirements, and then normalizes and averages them with semantic similarity.
-        // 1.0 is the maximum value of the normalized BM25 scores.
+        /**
+         * Description: Calculates the final NxN similarity matrix. It computes raw BM25 scores for exact word matches,
+         * normalizes them between 0 and 1, and averages them with the semantic cosine similarity.
+         * Example: matrix[0][2] = 0.86 means requirement 0 and requirement 2 have an 86% overall similarity.
+         *
+         * @param requirements The list of preprocessed NLPResult requirements.
+         * @param weighting The WordWeighting helper instance.
+         * @param embeddings The WordEmbeddingProvider helper instance.
+         * @return A 2D array of doubles representing pairwise similarity scores between requirements.
+         */
         public double[][] calculateMatrix(List<NLPResult> requirements, WordWeighting weighting, WordEmbeddingProvider embeddings) {
             int size = requirements.size();
             double[][] matrix = new double[size][size];
@@ -144,6 +206,16 @@ public class SimilarityNetworkCalculator {
             return matrix;
         }
 
+        /**
+         * Description: Computes how well two requirements match based on exact word overlaps, while penalizing overly long sentences.
+         * Example: ReqA ("The door opens") vs ReqB ("The system closes the door"). Overlap on "door" -> Score e.g., 3.42
+         *
+         * @param query The query requirement NLPResult.
+         * @param document The target document requirement NLPResult.
+         * @param weighting The WordWeighting helper instance.
+         * @param avgDocLength The average document length across all requirements.
+         * @return The raw BM25+ relevance score.
+         */
         private double computeBM25PlusScore(NLPResult query, NLPResult document, WordWeighting weighting, double avgDocLength) {
             double score = 0.0;
             double docLength = document.lemmas.length;
@@ -167,17 +239,39 @@ public class SimilarityNetworkCalculator {
 
                 double numerator = tf * (k1 + 1);
                 double denominator = tf + k1 * (1 - b + b * (docLength / avgDocLength));
+
                 score += idfWeight * ((numerator / denominator) + delta);
             }
             return score;
         }
 
+        /**
+         * Description: Computes the semantic similarity between two requirements based on their final weighted document vectors.
+         * Example: ReqA ("open door") and ReqB ("close window") might have no exact word overlap but share semantically related concepts -> Semantic Score e.g., 0.65
+         *
+         * @param reqA The first requirement NLPResult.
+         * @param reqB The second requirement NLPResult.
+         * @param weighting The WordWeighting helper instance.
+         * @param embeddings The WordEmbeddingProvider helper instance.
+         * @return The semantic similarity score between 0.0 and 1.0.
+         */
         private double computeSemanticScore(NLPResult reqA, NLPResult reqB, WordWeighting weighting, WordEmbeddingProvider embeddings) {
+            //TODO optimize: only compute once for each word vector
             double[] vecA = computeWeightedDocumentVector(reqA, weighting, embeddings);
             double[] vecB = computeWeightedDocumentVector(reqB, weighting, embeddings);
             return embeddings.calculateCosineSimilarity(vecA, vecB);
         }
 
+        /**
+         * Description: Builds a single 300-dimensional vector representing the entire requirement by adding all word vectors
+         * (multiplied by their weight) and averaging them.
+         * Example: (Vector("door")*1.8 + Vector("open")*1.4) / 3.2 -> [0.08, -0.22, 0.65, ... ] (Represents the meaning of the whole sentence)
+         *
+         * @param req The requirement NLPResult.
+         * @param weighting The WordWeighting helper instance.
+         * @param embeddings The WordEmbeddingProvider helper instance.
+         * @return A double array representing the weighted document vector.
+         */
         private double[] computeWeightedDocumentVector(NLPResult req, WordWeighting weighting, WordEmbeddingProvider embeddings) {
             double[] docVector = null;
             double totalWeight = 0.0;
@@ -214,12 +308,19 @@ public class SimilarityNetworkCalculator {
         }
     }
 
-    // Most important method for calculating the similarity matrix.
+    /**
+     * Description: Main entry point for calculating the similarity matrix for a list of requirements.
+     * Trims word vector models if necessary, initializes weightings and embeddings, and executes BM25+ semantic calculation.
+     * Example: processRequirements(requirements, Language.GERMAN, "path/to/models") -> Returns SimilarityResult object
+     *
+     * @param requirements The list of preprocessed NLPResult requirements.
+     * @param language The language enum for selecting vector models (now uses language.langCode).
+     * @param baseModelDir The base directory containing word vector models.
+     * @return A SimilarityResult object containing the calculated matrix, embeddings, and weights.
+     */
     public static SimilarityResult processRequirements(List<NLPResult> requirements, Language language, String baseModelDir) {
-        // Determine language code and model paths
-        String langCode = (language == Language.GERMAN) ? "de" : "en";
-        String originalModelPath = baseModelDir + "/wiki." + langCode + ".vec";
-        String trimmedModelPath = baseModelDir + "/wiki." + langCode + ".trimmed.vec";
+        String originalModelPath = baseModelDir + "/wiki." + language.langCode + ".vec";
+        String trimmedModelPath = baseModelDir + "/wiki." + language.langCode + ".trimmed.vec";
 
         // Trim model to required words if not already done
         File trimmedFile = new File(trimmedModelPath);
@@ -238,8 +339,14 @@ public class SimilarityNetworkCalculator {
         return new SimilarityResult(similarityMatrix, embeddings, weights);
     }
 
-    // This method removes all words from the original model that are not present in the requirements list.
-    //This optimizes the loading time of the model and reduces the memory footprint.
+    /**
+     * Description: Trims an original Word2Vec vector file to keep only words present in the requirements list to optimize load time and memory usage.
+     * Example: trimVectorFile("full.vec", "trimmed.vec", requirements)
+     *
+     * @param inputPath Path to the original full vector model file.
+     * @param outputPath Destination path for the trimmed vector model file.
+     * @param requirements List of requirements used to extract required vocabulary.
+     */
     private static void trimVectorFile(String inputPath, String outputPath, List<NLPResult> requirements) {
         Set<String> requiredWords = new HashSet<>();
 
@@ -293,17 +400,43 @@ public class SimilarityNetworkCalculator {
         }
     }
 
-
-    //TODO Remove when done with implementation
-    // Method only for testing the methods
+    //TODO move to tester class
+    //Test metohds
     public static void main(String[] args) {
-        List<NLPResult> requirements = createSampleData();
-
         Language language = Language.GERMAN;
         String baseModelDir = "VariabilityMining\\varmining\\src\\main\\resources\\requirementMining\\models";
 
-        SimilarityResult result =
-                processRequirements(requirements, language, baseModelDir);
+        System.out.println("======================================================");
+        System.out.println("RUNNING BASELINE TEST (Full Matrix)");
+        System.out.println("======================================================");
+        runExistingTest(language, baseModelDir);
+
+        System.out.println("\n======================================================");
+        System.out.println("RUNNING SCENARIO TESTS");
+        System.out.println("======================================================");
+
+        // 1. Test: Sentences that fit well together (high similarity expected, but not identical)
+        runSpecificTest("TEST 1: High Similarity (Related but not identical)",
+                createHighSimilarityData(), language, baseModelDir);
+
+        // 2. Test: Sentences that are identical (similarity ~ 1.0 expected)
+        runSpecificTest("TEST 2: Identical Requirements",
+                createIdenticalData(), language, baseModelDir);
+
+        // 3. Test: Sentences that are very different (lower similarity expected)
+        runSpecificTest("TEST 3: Very Different Requirements",
+                createVeryDifferentData(), language, baseModelDir);
+
+        // 4. Test: Sentences that do not fit together at all (similarity close to 0 expected)
+        runSpecificTest("TEST 4: Completely Unrelated Requirements",
+                createCompletelyUnrelatedData(), language, baseModelDir);
+    }
+
+
+     // Description: Runs the original test with the full 30-item sample data set
+    private static void runExistingTest(Language language, String baseModelDir) {
+        List<NLPResult> requirements = createSampleData();
+        SimilarityResult result = processRequirements(requirements, language, baseModelDir);
 
         System.out.println("Calculated similarity matrix (first 5x5 entries):");
         for (int i = 0; i < Math.min(5, result.similarityMatrix.length); i++) {
@@ -312,10 +445,62 @@ public class SimilarityNetworkCalculator {
             }
             System.out.println();
         }
-
-        System.out.println("\nDimension of the entire matrix: " + result.similarityMatrix.length + "x" + result.similarityMatrix[0].length);
+        System.out.println("Dimension of the entire matrix: " + result.similarityMatrix.length + "x" + result.similarityMatrix[0].length);
     }
 
+
+    // Description: Helper method to run a specific test. Assumes the two test requirements are at index 0 and 1.
+    private static void runSpecificTest(String testName, List<NLPResult> requirements, Language language, String baseModelDir) {
+        SimilarityResult result = processRequirements(requirements, language, baseModelDir);
+
+        System.out.println("\n" + testName);
+        System.out.println("Req A: " + String.join(" ", requirements.get(0).tokens));
+        System.out.println("Req B: " + String.join(" ", requirements.get(1).tokens));
+
+        // Matrix ist 32x32 groß, aber wir wollen nur den Vergleich der ersten beiden Sätze wissen.
+        System.out.printf(java.util.Locale.US, "--> Similarity Score: %.4f\n", result.similarityMatrix[0][1]);
+    }
+
+    // Following Tests: Places the 2 test sentences at the start, followed by the 30 background requirements to stabilize IDF/BM25.
+
+     // Test Data 1: High Similarity.
+    private static List<NLPResult> createHighSimilarityData() {
+        List<NLPResult> list = new ArrayList<>();
+        list.add(new NLPResult(new String[]{"Die", "Steuerung", "öffnet", "das", "Fenster"}, new String[]{"ART", "NN", "VVFIN", "ART", "NN"}, new String[]{"der", "steuerung", "öffnen", "der", "fenster"}));
+        list.add(new NLPResult(new String[]{"Der", "Benutzer", "schließt", "das", "Fenster", "manuell"}, new String[]{"ART", "NN", "VVFIN", "ART", "NN", "ADJD"}, new String[]{"der", "benutzer", "schließen", "der", "fenster", "manuell"}));
+        list.addAll(createSampleData());
+        return list;
+    }
+
+    //Test Data 2: Identical.
+    private static List<NLPResult> createIdenticalData() {
+        List<NLPResult> list = new ArrayList<>();
+        list.add(new NLPResult(new String[]{"Ein", "defekter", "Sensor", "löst", "Alarm", "aus"}, new String[]{"ART", "ADJA", "NN", "VVFIN", "NN", "PTKVZ"}, new String[]{"ein", "defekt", "sensor", "lösen", "alarm", "aus"}));
+        list.add(new NLPResult(new String[]{"Ein", "defekter", "Sensor", "löst", "Alarm", "aus"}, new String[]{"ART", "ADJA", "NN", "VVFIN", "NN", "PTKVZ"}, new String[]{"ein", "defekt", "sensor", "lösen", "alarm", "aus"}));
+        list.addAll(createSampleData());
+        return list;
+    }
+
+    // Test Data 3: Very Different.
+
+    private static List<NLPResult> createVeryDifferentData() {
+        List<NLPResult> list = new ArrayList<>();
+        list.add(new NLPResult(new String[]{"Das", "System", "prüft", "die", "Anmeldung"}, new String[]{"ART", "NN", "VVFIN", "ART", "NN"}, new String[]{"der", "system", "prüfen", "der", "anmeldung"}));
+        list.add(new NLPResult(new String[]{"Ein", "defekter", "Sensor", "löst", "Alarm", "aus"}, new String[]{"ART", "ADJA", "NN", "VVFIN", "NN", "PTKVZ"}, new String[]{"ein", "defekt", "sensor", "lösen", "alarm", "aus"}));
+        list.addAll(createSampleData());
+        return list;
+    }
+
+    // Test Data 4: Completely Unrelated.
+    private static List<NLPResult> createCompletelyUnrelatedData() {
+        List<NLPResult> list = new ArrayList<>();
+        list.add(new NLPResult(new String[]{"Das", "Passwort", "des", "Benutzers", "ist", "sicher"}, new String[]{"ART", "NN", "ART", "NN", "VAFIN", "ADJD"}, new String[]{"der", "passwort", "der", "benutzer", "sein", "sicher"}));
+        list.add(new NLPResult(new String[]{"Temperatur", "wird", "vom", "Sensor", "gemessen"}, new String[]{"NN", "VAFIN", "APPRART", "NN", "VVPP"}, new String[]{"temperatur", "werden", "von", "sensor", "messen"}));
+        list.addAll(createSampleData());
+        return list;
+    }
+
+    // Description: Generates the background corpus of 30 NLPResult requirements for stable calculations.
     private static List<NLPResult> createSampleData() {
         List<NLPResult> list = new ArrayList<>();
 
@@ -357,5 +542,4 @@ public class SimilarityNetworkCalculator {
 
         return list;
     }
-
 }

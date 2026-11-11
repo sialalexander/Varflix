@@ -13,6 +13,9 @@ public class RequirementsVariabilityExtractorTester {
 
     static Language lang = Language.GERMAN;
 
+    /**
+     * Description: Main entry point to test individual components separately as well as the complete requirements variability extraction pipeline.
+     */
     public static void main(String[] args) {
         //Basic Requirements Preprocessing Test
         Map <String, NLPResult> preproReqs = requirementPreprocessor_basic_test(getSampleRequirements());

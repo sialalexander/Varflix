@@ -3,7 +3,9 @@ package requirementMining.helper;
 import requirementMining.SimilarityNetworkCalculator.WordEmbeddingProvider;
 import requirementMining.SimilarityNetworkCalculator.WordWeighting;
 
-//TODO -> move to data structure
+/**
+ * Data structure storing the similarity matrix, word embeddings, and word weights.
+ */
 public class SimilarityResult {
     public final double[][] similarityMatrix;
     public final WordEmbeddingProvider embeddings;

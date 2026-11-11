@@ -2,9 +2,9 @@ package requirementMining.helper;
 
 import java.util.Arrays;
 
-// TODO -> maybe move to datastructures???
-// Natural Language Processing - Result
-// Tokens (words) with tags (which type) and lemmas (normalized form)
+/**
+ * Data structure storing NLP tokens, POS tags, and lemmas.
+ */
 public class NLPResult {
     public final String[] tokens;
     public final String[] tags;
