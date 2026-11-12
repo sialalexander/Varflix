@@ -51,15 +51,25 @@ The binary files required for POS tagging (Part of Speech) and lemmatization com
 - Version 1.3.0
 
 
-# Similariy Network Calculuator
-TODO -> add infos about vec files
-TODO -> add used libraries
-....
-https://fasttext.cc/docs/en/pretrained-vectors.html
-German and englisch
+# Similarity Network Calculator
 
-To big - can not be included int the rep
-Only incldued in gitginoere -> have to added manually after donwload
+## External Resources
 
-Mention that during running a wiki.xx.trimmed.vec is created
-It is shortened for every run. For better performance.
+### Pre-trained Word Vectors (`fastText`)
+German and English pre-trained wiki vectors are required for calculating similarity networks.
+
+- **Documentation & Info:** [fastText Pretrained Vectors](https://fasttext.cc/docs/en/pretrained-vectors.html)
+
+Due to their large file size, the vector files cannot be included directly in the repository and are excluded via `.gitignore`. They must be downloaded and added manually to the resources folder after cloning.
+
+### Vector Downloads & Setup
+1. Download the zip archives:
+    - **German:** https://dl.fbaipublicfiles.com/fasttext/vectors-wiki/wiki.de.zip
+    - **English:** https://dl.fbaipublicfiles.com/fasttext/vectors-wiki/wiki.en.zip
+2. Extract the downloaded zip files.
+3. Place the extracted `.vec` files into the designated resources folder (`models`).
+
+### Runtime Vector Optimization (`wiki.xx.trimmed.vec`)
+During the application execution, a shortened version (`wiki.xx.trimmed.vec`) is automatically created.
+- **Purpose:** The vector space is trimmed down to only contain words relevant to the dataset for each run.
+- **Benefit:** Significantly improves performance and reduces memory consumption during similarity calculations.
