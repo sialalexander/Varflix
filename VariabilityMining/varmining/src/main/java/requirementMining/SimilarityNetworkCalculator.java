@@ -76,7 +76,10 @@ public class SimilarityNetworkCalculator {
                 normA += Math.pow(vecA[i], 2);
                 normB += Math.pow(vecB[i], 2);
             }
-            if (normA == 0.0 || normB == 0.0) return Double.NaN; //Changed for testing (@sialalex): return Nan;
+            // OPTIMIZATION after VALIDATION: Return Double.NaN instead of 0.0 for empty vectors (OOV handling).
+            // Explanation: Prevents false zero-similarity dilution when specific compound words are missing in the Word2Vec model.
+            // Affected method: Handled in calculateMatrix() where NaN is checked to fall back to pure BM25.
+            if (normA == 0.0 || normB == 0.0) return Double.NaN;
             return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
         }
     }
@@ -196,18 +199,16 @@ public class SimilarityNetworkCalculator {
                     if (i == j) {
                         matrix[i][j] = 1.0;
                     } else {
-                        // Symmetric Self-Score von sentencne i = 100% possible BM25 vakze
+                        // OPTIMIZATION after VALIDATION: Local self-score normalization and OOV NaN fallback.
+                        // Explanation: Replaced global max scaling with local max(selfScoreI, selfScoreJ) to prevent distortion,
+                        // and gracefully fall back to 100% BM25 if the semantic score is NaN (due to unknown OOV words).
+                        // Affected methods: Uses computeBM25PlusScore() and interacts with calculateCosineSimilarity().
                         double selfScoreI = computeBM25PlusScore(requirements.get(i), requirements.get(i), weighting, avgDocLength);
                         double selfScoreJ = computeBM25PlusScore(requirements.get(j), requirements.get(j), weighting, avgDocLength);
 
-                        // How much perecntage did we reach with a perfect mathc?
                         double normalizedBm25 = rawBm25[i][j] / Math.max(selfScoreI, selfScoreJ);
-
-                        // Removed for testing (@sialalex): double normalizedBm25 = rawBm25[i][j] / maxBm25;
-
                         double semanticScore = computeSemanticScore(requirements.get(i), requirements.get(j), weighting, embeddings);
 
-                        //added for testing (@sialalex): If cosine is NaN, set to 0.5 (half of the max value)
                         if(Double.isNaN(semanticScore)) {
                             matrix[i][j] = normalizedBm25;
                         } else {
@@ -250,13 +251,14 @@ public class SimilarityNetworkCalculator {
                 String lowerLemma = lemma.toLowerCase();
                 String posTag = query.tags[i];
 
-                //Added for testing (@sialalex): Ignore articles and articles-like words
+                // OPTIMIZATION after VALIDATION: Filter out stop-words (ART) and zero-frequency terms (tf == 0).
+                // Explanation: Eliminates artificial baseline noise and prevents unearned BM25 delta points for non-matching words.
+                // Affected method: Mirrors stopword filtering logic in computeWeightedDocumentVector().
                 if (posTag != null && posTag.startsWith("ART")) continue;
 
                 double idfWeight = weighting.getWeight(lowerLemma, posTag);
                 int tf = termFrequencies.getOrDefault(lowerLemma, 0);
 
-                //Added for testing (@sialalex): Ignore words with frequency 0
                 if(tf == 0) continue;
 
                 double numerator = tf * (k1 + 1);
