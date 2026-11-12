@@ -196,7 +196,15 @@ public class SimilarityNetworkCalculator {
                     if (i == j) {
                         matrix[i][j] = 1.0;
                     } else {
-                        double normalizedBm25 = rawBm25[i][j] / maxBm25;
+                        // Symmetric Self-Score von sentencne i = 100% possible BM25 vakze
+                        double selfScoreI = computeBM25PlusScore(requirements.get(i), requirements.get(i), weighting, avgDocLength);
+                        double selfScoreJ = computeBM25PlusScore(requirements.get(j), requirements.get(j), weighting, avgDocLength);
+
+                        // How much perecntage did we reach with a perfect mathc?
+                        double normalizedBm25 = rawBm25[i][j] / Math.max(selfScoreI, selfScoreJ);
+
+                        // Removed for testing (@sialalex): double normalizedBm25 = rawBm25[i][j] / maxBm25;
+
                         double semanticScore = computeSemanticScore(requirements.get(i), requirements.get(j), weighting, embeddings);
 
                         // If cosine is negative (opposite direction), set to 0
@@ -237,6 +245,10 @@ public class SimilarityNetworkCalculator {
 
                 String lowerLemma = lemma.toLowerCase();
                 String posTag = query.tags[i];
+
+                //Added for testing (@sialalex): Ignore articles and articles-like words
+                if (posTag != null && posTag.startsWith("ART")) continue;
+
                 double idfWeight = weighting.getWeight(lowerLemma, posTag);
                 int tf = termFrequencies.getOrDefault(lowerLemma, 0);
 
@@ -283,6 +295,9 @@ public class SimilarityNetworkCalculator {
             for (int i = 0; i < req.lemmas.length; i++) {
                 String lemma = req.lemmas[i];
                 if (lemma == null || lemma.isBlank()) continue;
+
+                //Added for testing (@sialalex): Ignore articles and articles-like words
+                if (req.tags[i] != null && req.tags[i].startsWith("ART")) continue;
 
                 String lowerLemma = lemma.toLowerCase();
                 if (embeddings.hasWord(lowerLemma)) {
