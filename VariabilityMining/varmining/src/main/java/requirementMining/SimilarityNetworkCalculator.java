@@ -15,6 +15,7 @@ import java.util.*;
  */
 public class SimilarityNetworkCalculator {
 
+    /** STEP 2 **/
     /**
      * Description: Provides methods to load and process word embeddings using the Word2Vec model from DeepLearning4j.
      */
@@ -80,6 +81,7 @@ public class SimilarityNetworkCalculator {
         }
     }
 
+    /** STEP 2 **/
     /**
      * Description: Calculates word weights based on document frequency (IDF) and syntactic information.
      */
@@ -89,7 +91,7 @@ public class SimilarityNetworkCalculator {
         /**
          * Description: Initializes the WordWeighting instance by computing Inverse Document Frequency (IDF) scores
          * for all unique lemmas across the requirements list. Rarer words across the dataset receive higher importance.
-         * Example: With 10 documents, if "door" appears in 5 -> IDF = ~1.2. If "unlock" appears in 1 -> IDF = ~2.8.
+         * Example: With 10 reqs, if "door" appears in 5 -> IDF = ~1.2. If "unlock" appears in 1 -> IDF = ~2.8.
          *
          * @param requirements The list of preprocessed NLPResult requirements.
          */
@@ -138,6 +140,7 @@ public class SimilarityNetworkCalculator {
         }
     }
 
+    /** STEP 3 **/
     /**
      * Description: Calculates the similarity matrix using BM25+ and semantic similarity.
      */
@@ -240,6 +243,7 @@ public class SimilarityNetworkCalculator {
                 double numerator = tf * (k1 + 1);
                 double denominator = tf + k1 * (1 - b + b * (docLength / avgDocLength));
 
+                // Core formula
                 score += idfWeight * ((numerator / denominator) + delta);
             }
             return score;
@@ -308,19 +312,19 @@ public class SimilarityNetworkCalculator {
         }
     }
 
+    /** FINAL STEP **/
     /**
      * Description: Main entry point for calculating the similarity matrix for a list of requirements.
      * Trims word vector models if necessary, initializes weightings and embeddings, and executes BM25+ semantic calculation.
-     * Example: processRequirements(requirements, Language.GERMAN, "path/to/models") -> Returns SimilarityResult object
+     * Example: processRequirements(requirements, Language.GERMAN) -> Returns SimilarityResult object
      *
      * @param requirements The list of preprocessed NLPResult requirements.
-     * @param language The language enum for selecting vector models (now uses language.langCode).
-     * @param baseModelDir The base directory containing word vector models.
+     * @param language The language enum for selecting vector models and base paths.
      * @return A SimilarityResult object containing the calculated matrix, embeddings, and weights.
      */
-    public static SimilarityResult processRequirements(List<NLPResult> requirements, Language language, String baseModelDir) {
-        String originalModelPath = baseModelDir + "/wiki." + language.langCode + ".vec";
-        String trimmedModelPath = baseModelDir + "/wiki." + language.langCode + ".trimmed.vec";
+    public static SimilarityResult processRequirements(List<NLPResult> requirements, Language language) {
+        String originalModelPath = language.baseModelDir + "/wiki." + language.langCode + ".vec";
+        String trimmedModelPath = language.baseModelDir + "/wiki." + language.langCode + ".trimmed.vec";
 
         // Trim model to required words if not already done
         File trimmedFile = new File(trimmedModelPath);
@@ -339,6 +343,7 @@ public class SimilarityNetworkCalculator {
         return new SimilarityResult(similarityMatrix, embeddings, weights);
     }
 
+    /** STEP 1 **/
     /**
      * Description: Trims an original Word2Vec vector file to keep only words present in the requirements list to optimize load time and memory usage.
      * Example: trimVectorFile("full.vec", "trimmed.vec", requirements)
@@ -404,12 +409,11 @@ public class SimilarityNetworkCalculator {
     //Test metohds
     public static void main(String[] args) {
         Language language = Language.GERMAN;
-        String baseModelDir = "VariabilityMining\\varmining\\src\\main\\resources\\requirementMining\\models";
 
         System.out.println("======================================================");
         System.out.println("RUNNING BASELINE TEST (Full Matrix)");
         System.out.println("======================================================");
-        runExistingTest(language, baseModelDir);
+        runExistingTest(language);
 
         System.out.println("\n======================================================");
         System.out.println("RUNNING SCENARIO TESTS");
@@ -417,26 +421,25 @@ public class SimilarityNetworkCalculator {
 
         // 1. Test: Sentences that fit well together (high similarity expected, but not identical)
         runSpecificTest("TEST 1: High Similarity (Related but not identical)",
-                createHighSimilarityData(), language, baseModelDir);
+                createHighSimilarityData(), language);
 
         // 2. Test: Sentences that are identical (similarity ~ 1.0 expected)
         runSpecificTest("TEST 2: Identical Requirements",
-                createIdenticalData(), language, baseModelDir);
+                createIdenticalData(), language);
 
         // 3. Test: Sentences that are very different (lower similarity expected)
         runSpecificTest("TEST 3: Very Different Requirements",
-                createVeryDifferentData(), language, baseModelDir);
+                createVeryDifferentData(), language);
 
         // 4. Test: Sentences that do not fit together at all (similarity close to 0 expected)
         runSpecificTest("TEST 4: Completely Unrelated Requirements",
-                createCompletelyUnrelatedData(), language, baseModelDir);
+                createCompletelyUnrelatedData(), language);
     }
 
-
-     // Description: Runs the original test with the full 30-item sample data set
-    private static void runExistingTest(Language language, String baseModelDir) {
+    // Description: Runs the original test with the full 30-item sample data set
+    private static void runExistingTest(Language language) {
         List<NLPResult> requirements = createSampleData();
-        SimilarityResult result = processRequirements(requirements, language, baseModelDir);
+        SimilarityResult result = processRequirements(requirements, language);
 
         System.out.println("Calculated similarity matrix (first 5x5 entries):");
         for (int i = 0; i < Math.min(5, result.similarityMatrix.length); i++) {
@@ -448,10 +451,9 @@ public class SimilarityNetworkCalculator {
         System.out.println("Dimension of the entire matrix: " + result.similarityMatrix.length + "x" + result.similarityMatrix[0].length);
     }
 
-
     // Description: Helper method to run a specific test. Assumes the two test requirements are at index 0 and 1.
-    private static void runSpecificTest(String testName, List<NLPResult> requirements, Language language, String baseModelDir) {
-        SimilarityResult result = processRequirements(requirements, language, baseModelDir);
+    private static void runSpecificTest(String testName, List<NLPResult> requirements, Language language) {
+        SimilarityResult result = processRequirements(requirements, language);
 
         System.out.println("\n" + testName);
         System.out.println("Req A: " + String.join(" ", requirements.get(0).tokens));
