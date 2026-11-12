@@ -76,7 +76,7 @@ public class SimilarityNetworkCalculator {
                 normA += Math.pow(vecA[i], 2);
                 normB += Math.pow(vecB[i], 2);
             }
-            if (normA == 0.0 || normB == 0.0) return 0.0;
+            if (normA == 0.0 || normB == 0.0) return Double.NaN; //Changed for testing (@sialalex): return Nan;
             return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
         }
     }
@@ -207,10 +207,14 @@ public class SimilarityNetworkCalculator {
 
                         double semanticScore = computeSemanticScore(requirements.get(i), requirements.get(j), weighting, embeddings);
 
-                        // If cosine is negative (opposite direction), set to 0
-                        if (semanticScore < 0) semanticScore = 0;
-
-                        matrix[i][j] = (normalizedBm25 + semanticScore) / 2.0;
+                        //added for testing (@sialalex): If cosine is NaN, set to 0.5 (half of the max value)
+                        if(Double.isNaN(semanticScore)) {
+                            matrix[i][j] = normalizedBm25;
+                        } else {
+                            // If cosine is negative (opposite direction), set to 0
+                            if (semanticScore < 0) semanticScore = 0;
+                            matrix[i][j] = (normalizedBm25 + semanticScore) / 2.0;
+                        }
                     }
                 }
             }
@@ -251,6 +255,9 @@ public class SimilarityNetworkCalculator {
 
                 double idfWeight = weighting.getWeight(lowerLemma, posTag);
                 int tf = termFrequencies.getOrDefault(lowerLemma, 0);
+
+                //Added for testing (@sialalex): Ignore words with frequency 0
+                if(tf == 0) continue;
 
                 double numerator = tf * (k1 + 1);
                 double denominator = tf + k1 * (1 - b + b * (docLength / avgDocLength));
