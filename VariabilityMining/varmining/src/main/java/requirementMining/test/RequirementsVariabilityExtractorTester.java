@@ -1,15 +1,17 @@
 package requirementMining.test;
 
+import requirementMining.FeatureModelGenerator;
+import requirementMining.HACClusterer;
 import requirementMining.SimilarityNetworkCalculator;
+import requirementMining.helper.ClusterNode;
 import requirementMining.helper.NLPResult;
 import requirementMining.helper.SimilarityResult;
+import varflixModel.requirements.RequirementVariability;
+import varflixModel.requirements.RequirementVariabilityGroup;
+import varflixModel.requirements.RequirementVariant;
 import variabilityMining.Language;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 import static requirementMining.RequirementPreprocessor.*;
 
@@ -34,16 +36,26 @@ public class RequirementsVariabilityExtractorTester {
      * Description: Main entry point to test individual components separately as well as the complete requirements variability extraction pipeline.
      */
     public static void main(String[] args) {
-        // Basic Requirements Preprocessing Test (Original test)
+        // Basic Requirements Preprocessing Test
         Map<String, NLPResult> preproReqs = requirementPreprocessor_basic_test(getSampleRequirements());
 
         System.out.println("\n");
 
         // Similarity Network Calculator Tests
         testSimilarityNetworkCalculator();
+
+        System.out.println("\n");
+
+        // HAC Clustering & Feature Model Generation Tests
+        testHACAndFeatureModelGenerator();
     }
 
-    private static Map<String, NLPResult> requirementPreprocessor_basic_test(Map<String, String> requirements){
+    //region REQUIREMENTS PREPROCESSING TEST METHODS
+    /* =========================================================================
+     * REQUIREMENTS PREPROCESSING TEST METHODS
+     * ========================================================================= */
+
+    private static Map<String, NLPResult> requirementPreprocessor_basic_test(Map<String, String> requirements) {
         System.out.println("-------------------------------------------------------------------------");
         System.out.println("Start [requirementPreprocessor_basic_test]");
 
@@ -61,53 +73,53 @@ public class RequirementsVariabilityExtractorTester {
         return finalResults;
     }
 
-    private static Map<String, String> getSampleRequirements(){
+    private static Map<String, String> getSampleRequirements() {
         Map<String, String> sampleRequirements = new LinkedHashMap<>();
 
-        sampleRequirements.put("REQ-01", "Beim Ueberschreiten einer definierten Geschwindigkeit, werden saemtliche Tueren abgeschlossen, wenn sie nicht abgeschlossen sind.");
-        sampleRequirements.put("REQ-02", "Beim Ueberschreiten einer definierten Geschwindigkeit passiert nichts, wenn die Tueren bereits manuell abgeschlossen wurden.");
-        sampleRequirements.put("REQ-03", "Wird die Geschwindigkeit verringert, sodass sie den definierten Wert unterschreitet und wurden die Tueren durch das Automatic Locking Feature abgeschlossen, werden die Tueren aufgeschlossen.");
-        sampleRequirements.put("REQ-04", "Wird die Geschwindigkeit verringert, sodass sie den definierten Wert unterschreitet und wurden die Tueren nicht durch das Automatic Locking Feature, sondern zuvor manuell abgeschlossen, werden die Tueren nicht aufgeschlossen.");
-        sampleRequirements.put("REQ-05", "Druecken auf den Knopf zum Oeffnen des Fensters fuehrt dazu, dass das Fenster komplett geoeffnet wird.");
-        sampleRequirements.put("REQ-06", "Druecken auf den Knopf zum Schliessen des Fensters fuehrt dazu, dass das Fenster komplett geschlossen wird.");
-        sampleRequirements.put("REQ-07", "Wird das Fenster gerade geoeffnet, fuehrt Druecken der Taste zum Schliessen dazu, dass das Fenster anhaelt.");
-        sampleRequirements.put("REQ-08", "Wird das Fenster gerade geoeffnet, passiert durch Druecken der Taste zum Oeffnen nichts.");
-        sampleRequirements.put("REQ-09", "Wird das Fenster gerade geschlossen, fuehrt Druecken der Taste zum Oeffnen dazu, dass das Fenster anhaelt.");
-        sampleRequirements.put("REQ-10", "Wird das Fenster gerade geschlossen, passiert durch Druecken der Taste zum Schliessen nichts.");
-        sampleRequirements.put("REQ-11", "Ist das Fenster komplett geoeffnet, hat das Druecken der Taste zum Oeffnen keinen Effekt.");
-        sampleRequirements.put("REQ-12", "Ist das Fenster komplett geschlossen, hat das Druecken der Taste zum Schliessen keinen Effekt.");
-        sampleRequirements.put("REQ-13", "Gewaltsames Oeffnen einer Tuer fuehrt bei aktiver Alarmanlage zum Ausloesen von Alarm.");
-        sampleRequirements.put("REQ-14", "Gewaltsames Oeffnen einer Tuer fuehrt bei deaktivierter Alarmanlage nicht zum Ausloesen von Alarm.");
+        sampleRequirements.put("REQ-01", "Beim Überschreiten einer definierten Geschwindigkeit, werden sämtliche Türen abgeschlossen, wenn sie nicht abgeschlossen sind.");
+        sampleRequirements.put("REQ-02", "Beim Überschreiten einer definierten Geschwindigkeit passiert nichts, wenn die Türen bereits manuell abgeschlossen wurden.");
+        sampleRequirements.put("REQ-03", "Wird die Geschwindigkeit verringert, sodass sie den definierten Wert unterschreitet und wurden die Türen durch das Automatic Locking Feature abgeschlossen, werden die Türen aufgeschlossen.");
+        sampleRequirements.put("REQ-04", "Wird die Geschwindigkeit verringert, sodass sie den definierten Wert unterschreitet und wurden die Türen nicht durch das Automatic Locking Feature, sondern zuvor manuell abgeschlossen, werden die Türen nicht aufgeschlossen.");
+        sampleRequirements.put("REQ-05", "Drücken auf den Knopf zum Öffnen des Fensters führt dazu, dass das Fenster komplett geöffnet wird.");
+        sampleRequirements.put("REQ-06", "Drücken auf den Knopf zum Schliessen des Fensters führt dazu, dass das Fenster komplett geschlossen wird.");
+        sampleRequirements.put("REQ-07", "Wird das Fenster gerade geöffnet, führt Drücken der Taste zum Schliessen dazu, dass das Fenster anhält.");
+        sampleRequirements.put("REQ-08", "Wird das Fenster gerade geöffnet, passiert durch Drücken der Taste zum Öffnen nichts.");
+        sampleRequirements.put("REQ-09", "Wird das Fenster gerade geschlossen, führt Drücken der Taste zum Öffnen dazu, dass das Fenster anhält.");
+        sampleRequirements.put("REQ-10", "Wird das Fenster gerade geschlossen, passiert durch Drücken der Taste zum Schliessen nichts.");
+        sampleRequirements.put("REQ-11", "Ist das Fenster komplett geöffnet, hat das Drücken der Taste zum Öffnen keinen Effekt.");
+        sampleRequirements.put("REQ-12", "Ist das Fenster komplett geschlossen, hat das Drücken der Taste zum Schliessen keinen Effekt.");
+        sampleRequirements.put("REQ-13", "Gewaltsames Öffnen einer Tür führt bei aktiver Alarmanlage zum Auslösen von Alarm.");
+        sampleRequirements.put("REQ-14", "Gewaltsames Öffnen einer Tür führt bei deaktivierter Alarmanlage nicht zum Auslösen von Alarm.");
         sampleRequirements.put("REQ-15", "Laufender Alarm wird, falls LEDs vorhanden sind, durch Aufleuchten einer LED signalisiert.");
-        sampleRequirements.put("REQ-16", "Alarm wird automatisch nach 20 Sekunden beendet, woraufhin, falls LEDs vorhanden sind, eine Mitteilung ueber diese angezeigt wird.");
-        sampleRequirements.put("REQ-17", "Alarm kann durch das Aufschliessen des Fahrzeugs deaktiviert werden. Dies fuehrt, wenn LEDs vorhanden sind, nicht zu einer Mitteilung.");
+        sampleRequirements.put("REQ-16", "Alarm wird automatisch nach 20 Sekunden beendet, woraufhin, falls LEDs vorhanden sind, eine Mitteilung über diese angezeigt wird.");
+        sampleRequirements.put("REQ-17", "Alarm kann durch das Aufschliessen des Fahrzeugs deaktiviert werden. Dies führt, wenn LEDs vorhanden sind, nicht zu einer Mitteilung.");
         sampleRequirements.put("REQ-18", "Durch Druck auf den entsprechenden Knopf auf der Fernbedienung, wird die Alarmanlage aktiviert, wenn sie zuvor inaktiv war.");
-        sampleRequirements.put("REQ-19", "Ist die Alarmanlage aktiv, has das Druecken der Fernbedienungstaste zum Aktivieren keinen Effekt.");
+        sampleRequirements.put("REQ-19", "Ist die Alarmanlage aktiv, has das Drücken der Fernbedienungstaste zum Aktivieren keinen Effekt.");
         sampleRequirements.put("REQ-20", "Durch Druck auf den entsprechenden Knopf auf der Fernbedienung, wird die Alarmanlage deaktiviert, wenn sie zuvor aktiv war.");
-        sampleRequirements.put("REQ-21", "Ist die Alarmanlage nicht aktiv, hat das Druecken der Fernbedienungstaste zum Deaktivieren keinen Effekt.");
-        sampleRequirements.put("REQ-22", "Druck auf den Fernbedienungsknopf zum Oeffnen des Fensters laesst das Fenster zum Oeffnen nach unten fahren.");
-        sampleRequirements.put("REQ-23", "Druck auf den Fernbedienungsknopf zum Schliessen des Fensters laesst das Fenster zum Schliessen nach oben fahren.");
-        sampleRequirements.put("REQ-24", "Wird das Fenster gerade geoeffnet, fuehrt Druecken der Fernbedienungstaste zum Schliessen dazu, dass das Fenster anhaelt.");
-        sampleRequirements.put("REQ-25", "Wird das Fenster gerade geoeffnet, passiert durch Druecken der Taste zum Oeffnen nichts.");
-        sampleRequirements.put("REQ-26", "Wird das Fenster gerade geschlossen, fuehrt Druecken der Fernbedienungstaste zum Oeffnen dazu, dass das Fenster anhaelt.");
-        sampleRequirements.put("REQ-27", "Wird das Fenster gerade geschlossen, passiert durch Druecken der Taste zum Schliessen nichts.");
-        sampleRequirements.put("REQ-28", "Ist das Fenster komplett geoeffnet, hat das Druecken der Fernbedienungstaste zum Oeffnen keinen Effekt.");
-        sampleRequirements.put("REQ-29", "Ist das Fenster komplett geschlossen, hat das Druecken der Fernbedienungstaste zum Schliessen keinen Effekt.");
-        sampleRequirements.put("REQ-30", "Bei Druck auf den Verriegelungsknopf und inaktiver Zentralverriegelung wird die Zentralverriegelung aktiviert, wodurch alle Tueren abgeschlossen werden.");
-        sampleRequirements.put("REQ-31", "Bei Druck auf den Verriegelungsknopf und aktiver Zentralverriegelung wird keine Aktion ausgeloest.");
-        sampleRequirements.put("REQ-32", "Bei Druck auf den Entriegelungsknopf und aktiver Zentralverriegelung wird die Zentralverriegelung deaktiviert, wodurch alle Tueren aufgeschlossen werden.");
-        sampleRequirements.put("REQ-33", "Bei Druck auf den Entriegelungsknopf und inaktiver Zentralverriegelung wird keine Aktion ausgeloest.");
-        sampleRequirements.put("REQ-34", "Durch Abschliessen einer Tuer bei inaktiver Zentralverriegelung wird die Zentralverriegelung aktiviert, wodurch alle Tueren abgeschlossen werden.");
-        sampleRequirements.put("REQ-35", "Durch Abschliessen einer Tuer bei aktiver Zentralverriegelung wird keine Aktion ausgeloest.");
-        sampleRequirements.put("REQ-36", "Durch Aufschliessen einer Tuer bei aktiver Zentralverriegelung wird die Zentralverriegelung deaktiviert, wodurch alle Tueren aufgeschlossen werden.");
-        sampleRequirements.put("REQ-37", "Durch Aufschliessen einer Tuer bei inaktiver Zentralverriegelung wird keine Aktion ausgeloest.");
-        sampleRequirements.put("REQ-38", "Bei Verriegelung des Fensters, inaktiver Zentralverriegelung und Existenz des automatischen Fensterhebers werden alle Fenster automatisch geschlossen, falls sie geoeffnet sind. Andernfalls werden sie blockiert.");
+        sampleRequirements.put("REQ-21", "Ist die Alarmanlage nicht aktiv, hat das Drücken der Fernbedienungstaste zum Deaktivieren keinen Effekt.");
+        sampleRequirements.put("REQ-22", "Druck auf den Fernbedienungsknopf zum Öffnen des Fensters lässt das Fenster zum Öffnen nach unten fahren.");
+        sampleRequirements.put("REQ-23", "Druck auf den Fernbedienungsknopf zum Schliessen des Fensters lässt das Fenster zum Schliessen nach oben fahren.");
+        sampleRequirements.put("REQ-24", "Wird das Fenster gerade geöffnet, führt Drücken der Fernbedienungstaste zum Schliessen dazu, dass das Fenster anhält.");
+        sampleRequirements.put("REQ-25", "Wird das Fenster gerade geöffnet, passiert durch Drücken der Taste zum Öffnen nichts.");
+        sampleRequirements.put("REQ-26", "Wird das Fenster gerade geschlossen, führt Drücken der Fernbedienungstaste zum Öffnen dazu, dass das Fenster anhält.");
+        sampleRequirements.put("REQ-27", "Wird das Fenster gerade geschlossen, passiert durch Drücken der Taste zum Schliessen nichts.");
+        sampleRequirements.put("REQ-28", "Ist das Fenster komplett geöffnet, hat das Drücken der Fernbedienungstaste zum Öffnen keinen Effekt.");
+        sampleRequirements.put("REQ-29", "Ist das Fenster komplett geschlossen, hat das Drücken der Fernbedienungstaste zum Schliessen keinen Effekt.");
+        sampleRequirements.put("REQ-30", "Bei Druck auf den Verriegelungsknopf und inaktiver Zentralverriegelung wird die Zentralverriegelung aktiviert, wodurch alle Türen abgeschlossen werden.");
+        sampleRequirements.put("REQ-31", "Bei Druck auf den Verriegelungsknopf und aktiver Zentralverriegelung wird keine Aktion ausgelöst.");
+        sampleRequirements.put("REQ-32", "Bei Druck auf den Entriegelungsknopf und aktiver Zentralverriegelung wird die Zentralverriegelung deaktiviert, wodurch alle Türen aufgeschlossen werden.");
+        sampleRequirements.put("REQ-33", "Bei Druck auf den Entriegelungsknopf und inaktiver Zentralverriegelung wird keine Aktion ausgelöst.");
+        sampleRequirements.put("REQ-34", "Durch Abschliessen einer Tür bei inaktiver Zentralverriegelung wird die Zentralverriegelung aktiviert, wodurch alle Türen abgeschlossen werden.");
+        sampleRequirements.put("REQ-35", "Durch Abschliessen einer Tür bei aktiver Zentralverriegelung wird keine Aktion ausgelöst.");
+        sampleRequirements.put("REQ-36", "Durch Aufschliessen einer Tür bei aktiver Zentralverriegelung wird die Zentralverriegelung deaktiviert, wodurch alle Türen aufgeschlossen werden.");
+        sampleRequirements.put("REQ-37", "Durch Aufschliessen einer Tür bei inaktiver Zentralverriegelung wird keine Aktion ausgelöst.");
+        sampleRequirements.put("REQ-38", "Bei Verriegelung des Fensters, inaktiver Zentralverriegelung und Existenz des automatischen Fensterhebers werden alle Fenster automatisch geschlossen, falls sie geöffnet sind. Andernfalls werden sie blockiert.");
         sampleRequirements.put("REQ-39", "Bei Entriegelung des Fensters, aktiver Zentralverriegelung und Existenz des automatischen Fensterhebers wird die Blockierung aller Fenster aufgehoben.");
         sampleRequirements.put("REQ-40", "Bei Verriegelung des Fensters, inaktiver Zentralverriegelung und Existenz des manuellen Fensterhebers werden alle Fenster blockiert.");
         sampleRequirements.put("REQ-41", "Bei Entriegelung des Fensters, aktiver Zentralverriegelung und Existenz des manuellen Fensterhebers wird die Blockierung aller Fenster aufgehoben.");
-        sampleRequirements.put("REQ-42", "Wenn der Spiegel eingeklappt ist, bewirkt das Druecken der zentralen Taste, dass der Spiegel ausgeklappt wird.");
-        sampleRequirements.put("REQ-43", "Wenn der Spiegel ausgeklappt ist und das Fahrzeug steht, bewirkt das Druecken der zentralen Taste, dass der Spiegel eingeklappt wird.");
-        sampleRequirements.put("REQ-44", "Wenn der Spiegel ausgeklappt ist und sich das Fahrzeug in Bewegung befindet, hat das Druecken der zentralen Taste keinen Effekt.");
+        sampleRequirements.put("REQ-42", "Wenn der Spiegel eingeklappt ist, bewirkt das Drücken der zentralen Taste, dass der Spiegel ausgeklappt wird.");
+        sampleRequirements.put("REQ-43", "Wenn der Spiegel ausgeklappt ist und das Fahrzeug steht, bewirkt das Drücken der zentralen Taste, dass der Spiegel eingeklappt wird.");
+        sampleRequirements.put("REQ-44", "Wenn der Spiegel ausgeklappt ist und sich das Fahrzeug in Bewegung befindet, hat das Drücken der zentralen Taste keinen Effekt.");
         sampleRequirements.put("REQ-45", "Wenn die LED vorhanden ist und der Spiegel eingeklappt ist, leuchtet die LED.");
         sampleRequirements.put("REQ-46", "Wenn die LED vorhanden ist und der Spiegel ausgeklappt ist, leuchtet die LED nicht.");
         sampleRequirements.put("REQ-47", "Druck auf die Richtungstaste links des elektrischen Aussenspiegels bewirkt, dass sich der Aussenspiegel nach links bewegt. Dies funktioniert nur, wenn der Aussenspiegel Bewegungsspielraum nach links hat.");
@@ -117,7 +129,9 @@ public class RequirementsVariabilityExtractorTester {
         return sampleRequirements;
     }
 
+    //endregion
 
+    //region SIMILARITY NETWORK CALCULATOR TEST METHODS
     /* =========================================================================
      * SIMILARITY NETWORK CALCULATOR TEST METHODS
      * ========================================================================= */
@@ -200,7 +214,7 @@ public class RequirementsVariabilityExtractorTester {
             System.out.println("Matrix snippet (5x5):");
             printMatrixSnippet(matrix, 0, 5, 0, 5);
         } else {
-            System.out.println("Matrix snippet of the outliers among themselves (indices " + outlierStartIndex + " to " + (size-1) + "):");
+            System.out.println("Matrix snippet of the outliers among themselves (indices " + outlierStartIndex + " to " + (size - 1) + "):");
             printMatrixSnippet(matrix, outlierStartIndex, size, outlierStartIndex, size);
 
             System.out.println("Comparison of an outlier (index " + outlierStartIndex + ") with the base set (indices 0 to 3):");
@@ -327,7 +341,7 @@ public class RequirementsVariabilityExtractorTester {
     }
 
     // -------------------------------------------------------------------------
-    // New Large Scenario Generators
+    // Large Scenario Generators
     // -------------------------------------------------------------------------
 
     private static List<NLPResult> createAllDifferentData() {
@@ -385,4 +399,158 @@ public class RequirementsVariabilityExtractorTester {
         }
         return list;
     }
+
+    //endregion
+
+    //region HAC CLUSTERING & FEATURE MODEL GENERATION TEST METHODS
+    /* =========================================================================
+     * HAC CLUSTERING & FEATURE MODEL GENERATION TEST METHODS
+     * ========================================================================= */
+
+    private static void testHACAndFeatureModelGenerator() {
+        System.out.println("-------------------------------------------------------------------------");
+        System.out.println("Start [HACClusterer & FeatureModelGenerator Isolated Test]");
+
+        // 1. Load the 50 sample requirements and compute the similarity matrix
+        Map<String, String> rawReqs = getSampleRequirements();
+        Map<String, NLPResult> nlpMap = preprocess(rawReqs, lang);
+
+        List<String> orderedReqIds = new ArrayList<>(rawReqs.keySet());
+        List<NLPResult> orderedNlp = orderedReqIds.stream()
+                .map(nlpMap::get)
+                .toList();
+
+        SimilarityResult simResult = SimilarityNetworkCalculator.processRequirements(orderedNlp, lang);
+
+        // 2. Compare HACClusterer across all threshold criteria
+        HACClusterer clusterer = new HACClusterer();
+        for (HACClusterer.ThresholdCriterion criterion : HACClusterer.ThresholdCriterion.values()) {
+            List<ClusterNode> testClusters = clusterer.cluster(
+                    simResult.similarityMatrix,
+                    orderedReqIds,
+                    criterion
+            );
+            System.out.println("Criterion " + criterion + " -> Number of clusters: " + testClusters.size());
+        }
+
+        // Use SILHOUETTE for the subsequent pipeline steps
+        List<ClusterNode> clusters = clusterer.cluster(
+                simResult.similarityMatrix,
+                orderedReqIds,
+                HACClusterer.ThresholdCriterion.SILHOUETTE
+        );
+
+        // -------------------------------------------------------------------------
+        // SCENARIO A: Single Project (1 Variant -> all features must be MANDATORY)
+        // -------------------------------------------------------------------------
+        System.out.println("\n--- Scenario A: 1 Variant (Default) ---");
+        Set<String> singleVariantSet = Set.of("Default");
+        Map<String, Set<String>> singleRvMap = new LinkedHashMap<>();
+        for (String reqId : orderedReqIds) {
+            singleRvMap.put(reqId, singleVariantSet);
+        }
+
+        FeatureModelGenerator singleGenerator = new FeatureModelGenerator();
+        ClusterNode singleRoot = singleGenerator.buildFeatureTree(clusters, nlpMap, simResult.weights);
+        singleGenerator.evaluateVariabilityHeuristics(singleRoot, singleRvMap, singleVariantSet);
+
+        for (ClusterNode feature : singleRoot.getChildren()) {
+            System.out.printf("Feature: %-28s | Type: %-11s | Reqs: %s%n",
+                    feature.getFeatureName(),
+                    feature.getVariabilityType(),
+                    feature.getRequirementIds());
+        }
+
+        // -------------------------------------------------------------------------
+        // SCENARIO B: Multiple Variants (Basic, Comfort, Premium)
+        // -------------------------------------------------------------------------
+        System.out.println("\n--- Scenario B: 3 Variants (Basic, Comfort, Premium) ---");
+        Set<String> allVariants = new LinkedHashSet<>(List.of("Basic", "Comfort", "Premium"));
+        Map<String, Set<String>> multiRvMap = createSampleVariantMapping(orderedReqIds);
+
+        // Generate fresh cluster instances to avoid mutating Scenario A results
+        List<ClusterNode> clustersForMulti = clusterer.cluster(
+                simResult.similarityMatrix,
+                orderedReqIds,
+                HACClusterer.ThresholdCriterion.SILHOUETTE
+        );
+
+        FeatureModelGenerator multiGenerator = new FeatureModelGenerator();
+        ClusterNode multiRoot = multiGenerator.buildFeatureTree(clustersForMulti, nlpMap, simResult.weights);
+        multiGenerator.evaluateVariabilityHeuristics(multiRoot, multiRvMap, allVariants);
+
+        Map<String, RequirementVariant> variantLookup = new LinkedHashMap<>();
+        for (String v : allVariants) {
+            variantLookup.put(v, new RequirementVariant(v));
+        }
+
+        List<RequirementVariabilityGroup> groups = multiGenerator.createVariabilityGroups(
+                multiRoot,
+                rawReqs,
+                variantLookup
+        );
+
+        for (RequirementVariabilityGroup group : groups) {
+            List<String> reqIdsInGroup = group.getElements().stream()
+                    .map(RequirementVariability::getRequirementId)
+                    .toList();
+
+            System.out.printf("Group #%02d: %-26s | Type: %-11s | Variants: %-24s | Reqs: %s%n",
+                    group.getId(),
+                    group.getLabel(),
+                    group.getAttributeName(),
+                    group.getOccurrences(),
+                    reqIdsInGroup);
+        }
+
+        System.out.println("End [HACClusterer & FeatureModelGenerator Isolated Test]");
+        System.out.println("-------------------------------------------------------------------------");
+    }
+
+    // -------------------------------------------------------------------------
+    // Data Generation Helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Helper method to simulate a Requirement-to-Variant (R-V) mapping for the 50 sample requirements.
+     */
+    private static Map<String, Set<String>> createSampleVariantMapping(List<String> reqIds) {
+        Map<String, Set<String>> rvMap = new LinkedHashMap<>();
+
+        for (String id : reqIds) {
+            int num = Integer.parseInt(id.replace("REQ-", ""));
+
+            if (num >= 1 && num <= 4) {
+                // Automatic Locking -> OPTIONAL (Comfort & Premium only)
+                rvMap.put(id, Set.of("Comfort", "Premium"));
+            } else if (num >= 5 && num <= 12) {
+                // Basic power windows -> MANDATORY (all variants)
+                rvMap.put(id, Set.of("Basic", "Comfort", "Premium"));
+            } else if (num >= 13 && num <= 21) {
+                // Alarm system -> OPTIONAL (Comfort & Premium only)
+                rvMap.put(id, Set.of("Comfort", "Premium"));
+            } else if (num >= 22 && num <= 29) {
+                // Remote window control -> OPTIONAL (Premium only)
+                rvMap.put(id, Set.of("Premium"));
+            } else if (num >= 30 && num <= 37) {
+                // Central locking -> MANDATORY (all variants)
+                rvMap.put(id, Set.of("Basic", "Comfort", "Premium"));
+            } else if (num >= 38 && num <= 39) {
+                // Automatic window lifter -> ALTERNATIVE candidate (Comfort & Premium)
+                rvMap.put(id, Set.of("Comfort", "Premium"));
+            } else if (num >= 40 && num <= 41) {
+                // Manual window lifter -> ALTERNATIVE counterpart (Basic only)
+                rvMap.put(id, Set.of("Basic"));
+            } else if (num >= 42 && num <= 46) {
+                // Foldable exterior mirrors -> OPTIONAL (Comfort & Premium only)
+                rvMap.put(id, Set.of("Comfort", "Premium"));
+            } else {
+                // Electric mirror adjustment (REQ-47..50) -> MANDATORY (all variants)
+                rvMap.put(id, Set.of("Basic", "Comfort", "Premium"));
+            }
+        }
+        return rvMap;
+    }
+
+    //endregion
 }
