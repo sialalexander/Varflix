@@ -1,103 +1,206 @@
 package requirementMining;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import requirementMining.HACClusterer.ThresholdCriterion;
+import requirementMining.helper.ClusterNode;
+import requirementMining.helper.NLPResult;
+import requirementMining.helper.SimilarityResult;
 import variabilityMining.IVariabilityExtractor;
-import varflixModel.IVariability;
-import varflixModel.IVariant;
-import varflixModel.IVariabilityGroup;
 import variabilityMining.Language;
+import varflixModel.IVariability;
+import varflixModel.IVariabilityGroup;
+import varflixModel.IVariant;
+import varflixModel.requirements.RequirementVariability;
+import varflixModel.requirements.RequirementVariabilityGroup;
+import varflixModel.requirements.RequirementVariant;
 
-public class RequirementsVariabilityExtractor <V extends IVariant, E extends IVariability>
+public class RequirementsVariabilityExtractor<V extends IVariant, E extends IVariability>
         implements IVariabilityExtractor<V, E> {
 
+    private List<RequirementVariant> extractedVariants = new ArrayList<>();
+    private List<RequirementVariability> extractedElements = new ArrayList<>();
+
     /**
-     * Description: Performs automatic variability mining by orchestrating the process of loading requirements, preprocessing, creating a similarity network, clustering, applying heuristics, and creating variability groups.
-     * Example: performAutomaticMining("path/to/variants", "path/to/input") -> Returns List of IVariabilityGroup objects
+     * Description: Performs automatic variability mining from either a single requirements file (1 variant)
+     * or a directory of variant files (N variants), each formatted as semicolon-separated lines (ID;Description).
      *
-     * @param variantPath The file path to the variants.
-     * @param inputPath The file path to the input data.
-     * @return A list of extracted variability groups containing variants and variability elements.
+     * @param variantPath Path to the variant file or directory (checked first if provided).
+     * @param inputPath   Fallback path to the variant file or directory if variantPath is null/blank.
+     * @return A list of extracted variability groups containing variants and requirement elements.
      */
     @Override
+    @SuppressWarnings("unchecked")
     public List<IVariabilityGroup<V, E>> performAutomaticMining(String variantPath, String inputPath) {
-        //TODO sialalex
-        // 0. Load requirements
-        // 1. Requirements reading & preprocessing
-        // 2. Create imilarity Network (Word Embeddings + BM25+)
-        // 3. HAC Clustering  (create Feature Tree)
-        // 4. Use heuristics anwenden (mandatory / optional)
-        // 5. Create variability groups
-        return List.of();
+        String source = (variantPath != null && !variantPath.isBlank()) ? variantPath : inputPath;
+        if (source == null || source.isBlank()) {
+            return List.of();
+        }
+
+        // 0. Load requirements and Requirement-to-Variant (R-V) mapping
+        Map<String, String> requirementsMap = new LinkedHashMap<>();
+        Map<String, Set<String>> reqToVariantsMap = new LinkedHashMap<>();
+        loadRequirementsAndVariants(Paths.get(source), requirementsMap, reqToVariantsMap);
+
+        if (requirementsMap.isEmpty()) {
+            return List.of();
+        }
+
+        // Extract all distinct variant names
+        Set<String> allVariantNames = new LinkedHashSet<>();
+        reqToVariantsMap.values().forEach(allVariantNames::addAll);
+
+        // Instantiate canonical RequirementVariant objects while preserving order
+        Map<String, RequirementVariant> variantLookup = new LinkedHashMap<>();
+        for (String variantName : allVariantNames) {
+            variantLookup.put(variantName, new RequirementVariant(variantName));
+        }
+        this.extractedVariants = new ArrayList<>(variantLookup.values());
+
+        // 1. Requirements reading & NLP preprocessing
+        Language lang = detectLanguage(String.join(" ", requirementsMap.values()));
+        Map<String, NLPResult> nlpMap = RequirementPreprocessor.preprocess(requirementsMap, lang);
+
+        List<String> orderedReqIds = new ArrayList<>(requirementsMap.keySet());
+        List<NLPResult> orderedNlpResults = orderedReqIds.stream()
+                .map(nlpMap::get)
+                .collect(Collectors.toList());
+
+        // 2. Create Similarity Network (Word Embeddings + BM25+)
+        SimilarityResult similarityResult = SimilarityNetworkCalculator.processRequirements(orderedNlpResults, lang);
+
+        // 3. HAC Clustering with automatic Silhouette threshold selection
+        HACClusterer clusterer = new HACClusterer();
+        List<ClusterNode> clusters = clusterer.cluster(
+                similarityResult.similarityMatrix,
+                orderedReqIds,
+                ThresholdCriterion.SILHOUETTE
+        );
+
+        // 4. Construct Feature Tree (F-R mapping) & evaluate variability heuristics (F-V mapping)
+        FeatureModelGenerator modelGenerator = new FeatureModelGenerator();
+        ClusterNode featureRoot = modelGenerator.buildFeatureTree(clusters, nlpMap, similarityResult.weights);
+        modelGenerator.evaluateVariabilityHeuristics(featureRoot, reqToVariantsMap, allVariantNames);
+
+        // 5. Create variability groups, store elements, and generate pcm.csv
+        List<RequirementVariabilityGroup> groups = modelGenerator.createVariabilityGroups(
+                featureRoot,
+                requirementsMap,
+                variantLookup
+        );
+
+        // Flatten all elements from the groups into a single list
+        this.extractedElements = groups.stream()
+                .flatMap(g -> g.getElements().stream())
+                .collect(Collectors.toList());
+
+        // Cast each group to the generic IVariabilityGroup interface
+        List<IVariabilityGroup<V, E>> castedGroups = groups.stream()
+                .map(g -> (IVariabilityGroup<V, E>) g)
+                .collect(Collectors.toList());
+
+        // Build the Product Comparison Matrix and write pcm.csv
+        buildPCM(getVariants(), castedGroups);
+
+        return castedGroups;
     }
 
     /**
-     * Description: Retrieves the list of variants identified during the mining process.
-     * Example: getVariants() -> Returns List of IVariant objects
+     * Description: Retrieves the unmodifiable list of variants identified during the mining process.
      *
      * @return A list of extracted variants.
      */
     @Override
+    @SuppressWarnings("unchecked")
     public List<V> getVariants() {
-        //TODO sialalex
-        return List.of();
+        return (List<V>) Collections.unmodifiableList(extractedVariants);
     }
 
     /**
-     * Description: Retrieves the list of variability elements identified during the mining process.
-     * Example: getElements() -> Returns List of IVariability objects
+     * Description: Retrieves the unmodifiable list of requirement variability elements identified during mining.
      *
      * @return A list of extracted variability elements.
      */
     @Override
+    @SuppressWarnings("unchecked")
     public List<E> getElements() {
-        //TODO sialalex
-        return List.of();
+        return (List<E>) Collections.unmodifiableList(extractedElements);
     }
 
     /**
-     * Description: Loads the requirements from a text file and converts them into a map of two strings (req-id and req-desc).
-     * Example: loadRequirements("reqs.txt") -> Returns Map containing {"REQ1": "Description 1"}
-     *
-     * @param filePath The path to the text file containing the requirements.
-     * @return A map mapping requirement IDs to their respective descriptions.
+     * Description: Loads requirements and Requirement-to-Variant (R-V) mappings from either
+     * a single variant file (1 variant) or a directory of variant files (N variants).
      */
-    public Map<String, String> loadRequirements(String filePath) {
+    private void loadRequirementsAndVariants(Path sourcePath,
+                                             Map<String, String> requirementsMap,
+                                             Map<String, Set<String>> reqToVariantsMap) {
         try {
-            Path path = Paths.get(filePath);
-            String rawString =  Files.readString(path);
-            Map<String, String> requirementMap = Arrays.stream(rawString.split("\n"))
-                    .map(line -> line.trim())
-                    .filter(line -> !line.isEmpty())
-                    .map(line -> line.split(";", 2)) // Splits into 2 parts: [Key, Value]
-                    .filter(parts -> parts.length == 2)
-                    .collect(Collectors.toMap(parts -> parts[0], parts -> parts[1]));
-
-            return requirementMap;
-        } catch (Exception e) {
-            System.err.println("Error reading file: " + e.getMessage());
-            return Collections.emptyMap();
+            if (Files.isDirectory(sourcePath)) {
+                try (Stream<Path> files = Files.list(sourcePath)) {
+                    List<Path> variantFiles = files.filter(Files::isRegularFile).sorted().toList();
+                    for (Path file : variantFiles) {
+                        extractVariantFiles(file, requirementsMap, reqToVariantsMap);
+                    }
+                }
+            } else if (Files.isRegularFile(sourcePath)) {
+                extractVariantFiles(sourcePath, requirementsMap, reqToVariantsMap);
+            }
+        } catch (IOException e) {
+            System.err.println("Error loading requirements source: " + e.getMessage());
         }
     }
 
     /**
-     * Description: Detects the language of the provided text based on common articles. (TODO -> required or different method available)
-     * Example: detectLanguage("Das System soll...") -> Returns Language.GERMAN
+     * Description: Parses a semicolon-separated variant file (ID;Description) and merges its
+     * requirements and variant associations into the target maps.
+     */
+    private void extractVariantFiles(Path file,
+                                  Map<String, String> requirementsMap,
+                                  Map<String, Set<String>> reqToVariantsMap) throws IOException {
+        String fileName = file.getFileName().toString();
+        int dotIdx = fileName.lastIndexOf('.');
+        String variantName = (dotIdx > 0) ? fileName.substring(0, dotIdx) : fileName;
+
+        for (String line : Files.readAllLines(file)) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) continue;
+
+            String[] parts = trimmed.split(";", 2);
+            if (parts.length < 2) continue;
+
+            String rawId = parts[0].trim();
+            String text = parts[1].trim();
+
+            if (!requirementsMap.containsKey(rawId)) {
+                requirementsMap.put(rawId, text);
+                reqToVariantsMap.computeIfAbsent(rawId, k -> new LinkedHashSet<>()).add(variantName);
+            } else if (requirementsMap.get(rawId).equals(text)) {
+                reqToVariantsMap.computeIfAbsent(rawId, k -> new LinkedHashSet<>()).add(variantName);
+            } else {
+                String scopedId = variantName + "_" + rawId;
+                requirementsMap.put(scopedId, text);
+                reqToVariantsMap.computeIfAbsent(scopedId, k -> new LinkedHashSet<>()).add(variantName);
+            }
+        }
+    }
+
+    /**
+     * Description: Detects the language of the provided text based on common German articles.
      *
      * @param text The text input to be analyzed for language detection.
-     * @return The detected Language enum (e.g., Language.ENGLISH or Language.GERMAN).
+     * @return The detected Language enum (Language.GERMAN or Language.ENGLISH).
      */
-    public Language detectLanguage(String text) {
+    //TODO optimize this method (e.g., use a trie or regex)
+    private Language detectLanguage(String text) {
         if (text == null || text.isEmpty()) return Language.ENGLISH;
 
-        String lowerText = text.toLowerCase();
+        String lowerText = " " + text.toLowerCase() + " ";
         if (lowerText.contains(" die ") || lowerText.contains(" der ") || lowerText.contains(" das ")) {
             return Language.GERMAN;
         }

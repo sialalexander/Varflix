@@ -1,0 +1,12 @@
+REQ-01;Beim Überschreiten einer definierten Geschwindigkeit, werden sämtliche Türen abgeschlossen, wenn sie nicht abgeschlossen sind.
+REQ-02;Beim Überschreiten einer definierten Geschwindigkeit passiert nichts, wenn die Türen bereits manuell abgeschlossen wurden.
+REQ-03;Wird die Geschwindigkeit verringert, sodass sie den definierten Wert unterschreitet und wurden die Türen durch das Automatic Locking Feature abgeschlossen, werden die Türen aufgeschlossen.
+REQ-04;Wird die Geschwindigkeit verringert, sodass sie den definierten Wert unterschreitet und wurden die Türen nicht durch das Automatic Locking Feature, sondern zuvor manuell abgeschlossen, werden die Türen nicht aufgeschlossen.
+REQ-30;Bei Druck auf den Verriegelungsknopf und inaktiver Zentralverriegelung wird die Zentralverriegelung aktiviert, wodurch alle Türen abgeschlossen werden.
+REQ-31;Bei Druck auf den Verriegelungsknopf und aktiver Zentralverriegelung wird keine Aktion ausgelöst.
+REQ-32;Bei Druck auf den Entriegelungsknopf und aktiver Zentralverriegelung wird die Zentralverriegelung deaktiviert, wodurch alle Türen aufgeschlossen werden.
+REQ-33;Bei Druck auf den Entriegelungsknopf und inaktiver Zentralverriegelung wird keine Aktion ausgelöst.
+REQ-47;Druck auf die Richtungstaste links des elektrischen Aussenspiegels bewirkt, dass sich der Aussenspiegel nach links bewegt. Dies funktioniert nur, wenn der Aussenspiegel Bewegungsspielraum nach links hat.
+REQ-48;Druck auf die Richtungstaste rechts des elektrischen Aussenspiegels bewirkt, dass sich der Aussenspiegel nach rechts bewegt. Dies funktioniert nur, wenn der Aussenspiegel Bewegungsspielraum nach rechts hat.
+REQ-49;Druck auf die Richtungstaste oben des elektrischen Aussenspiegels bewirkt, dass sich der Aussenspiegel nach oben bewegt. Dies funktioniert nur, wenn der Aussenspiegel Bewegungsspielraum nach oben hat.
+REQ-50;Druck auf die Richtungstaste unten des elektrischen Aussenspiegels bewirkt, dass sich der Aussenspiegel nach unten bewegt. Dies funktioniert nur, wenn der Aussenspiegel Bewegungsspielraum nach unten hat.

@@ -2,10 +2,12 @@ package requirementMining.test;
 
 import requirementMining.FeatureModelGenerator;
 import requirementMining.HACClusterer;
+import requirementMining.RequirementsVariabilityExtractor;
 import requirementMining.SimilarityNetworkCalculator;
 import requirementMining.helper.ClusterNode;
 import requirementMining.helper.NLPResult;
 import requirementMining.helper.SimilarityResult;
+import varflixModel.IVariabilityGroup;
 import varflixModel.requirements.RequirementVariability;
 import varflixModel.requirements.RequirementVariabilityGroup;
 import varflixModel.requirements.RequirementVariant;
@@ -36,18 +38,35 @@ public class RequirementsVariabilityExtractorTester {
      * Description: Main entry point to test individual components separately as well as the complete requirements variability extraction pipeline.
      */
     public static void main(String[] args) {
-        // Basic Requirements Preprocessing Test
+        // 1. Requirements Preprocessing Tests
+        printSectionHeader("GROUP 1: REQUIREMENTS PREPROCESSING TESTS", false);
         Map<String, NLPResult> preproReqs = requirementPreprocessor_basic_test(getSampleRequirements());
 
-        System.out.println("\n");
-
-        // Similarity Network Calculator Tests
+        // 2. Similarity Network Calculator Tests
+        printSectionHeader("GROUP 2: SIMILARITY NETWORK CALCULATOR TESTS", true);
         testSimilarityNetworkCalculator();
 
+        // 3. HAC Clustering & Feature Model Generation Tests
+        printSectionHeader("GROUP 3: HAC CLUSTERING & FEATURE MODEL GENERATION TESTS", true);
+        testHACAndFeatureModelGenerator();
+
+        // 4. End-to-End Requirements Variability Extractor Tests
+        printSectionHeader("GROUP 4: END-TO-END REQUIREMENTS VARIABILITY EXTRACTOR TESTS", true);
+        String baseTestPath = "VariabilityMining/varmining/src/main/java/requirementMining/test/testData";
+        testEndToEndExtractor("TEST A: Single File (1 Variant)", baseTestPath + "/single/V1.txt");
+
         System.out.println("\n");
 
-        // HAC Clustering & Feature Model Generation Tests
-        testHACAndFeatureModelGenerator();
+        testEndToEndExtractor("TEST B: Directory with 3 Variants (Basic, Comfort, Premium)", baseTestPath + "/multi");
+    }
+
+    private static void printSectionHeader(String groupTitle, boolean leadingNewline) {
+        if (leadingNewline) {
+            System.out.println("\n");
+        }
+        System.out.println("=========================================================================");
+        System.out.println("  " + groupTitle);
+        System.out.println("=========================================================================");
     }
 
     //region REQUIREMENTS PREPROCESSING TEST METHODS
@@ -550,6 +569,45 @@ public class RequirementsVariabilityExtractorTester {
             }
         }
         return rvMap;
+    }
+
+    //endregion
+
+    //region END-TO-END EXTRACTOR TEST METHODS
+    /* =========================================================================
+     * END-TO-END EXTRACTOR TEST METHODS
+     * ========================================================================= */
+
+    private static void testEndToEndExtractor(String testTitle, String sourcePath) {
+        System.out.println("-------------------------------------------------------------------------");
+        System.out.println("Start [" + testTitle + "]");
+
+        RequirementsVariabilityExtractor<RequirementVariant, RequirementVariability> extractor =
+                new RequirementsVariabilityExtractor<>();
+
+        List<IVariabilityGroup<RequirementVariant, RequirementVariability>> groups =
+                extractor.performAutomaticMining(sourcePath, null);
+
+        System.out.println("Extracted Variants (" + extractor.getVariants().size() + "): " + extractor.getVariants());
+        System.out.println("Extracted Elements (" + extractor.getElements().size() + ")");
+        System.out.println("Extracted Feature Groups (" + groups.size() + "):");
+
+        for (IVariabilityGroup<RequirementVariant, RequirementVariability> group : groups) {
+            RequirementVariabilityGroup reqGroup = (RequirementVariabilityGroup) group;
+            List<String> reqIds = reqGroup.getElements().stream()
+                    .map(RequirementVariability::getRequirementId)
+                    .toList();
+
+            System.out.printf("Group #%02d: %-26s | Type: %-11s | Variants: %-24s | Reqs: %s%n",
+                    reqGroup.getId(),
+                    reqGroup.getLabel(),
+                    reqGroup.getAttributeName(),
+                    reqGroup.getOccurrences(),
+                    reqIds);
+        }
+
+        System.out.println("End [" + testTitle + "]");
+        System.out.println("-------------------------------------------------------------------------");
     }
 
     //endregion
