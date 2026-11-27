@@ -110,14 +110,29 @@ public class FeatureModelGenerator {
     public List<RequirementVariabilityGroup> createVariabilityGroups(ClusterNode featureRoot,
                                                                      Map<String, String> rawRequirements,
                                                                      Map<String, RequirementVariant> variantLookup) {
+        return createVariabilityGroups(featureRoot, rawRequirements, Collections.emptyMap(), variantLookup);
+    }
+
+    public List<RequirementVariabilityGroup> createVariabilityGroups(ClusterNode featureRoot,
+                                                                     Map<String, String> rawRequirements,
+                                                                     Map<String, NLPResult> nlpResults,
+                                                                     Map<String, RequirementVariant> variantLookup) {
         List<RequirementVariabilityGroup> groups = new ArrayList<>();
 
         for (ClusterNode feature : featureRoot.getChildren()) {
             List<RequirementVariability> elements = new ArrayList<>();
             for (String reqId : feature.getRequirementIds()) {
                 String desc = rawRequirements.getOrDefault(reqId, "");
-                elements.add(new RequirementVariability(reqId, desc, feature.getFeatureName()));
-                //TODO sialalex: add all informations to the feature name
+                NLPResult nlp = (nlpResults != null) ? nlpResults.get(reqId) : null;
+
+                List<String> lemmas = (nlp != null && nlp.lemmas != null)
+                        ? Arrays.asList(nlp.lemmas)
+                        : Collections.emptyList();
+                List<String> posTags = (nlp != null && nlp.tags != null)
+                        ? Arrays.asList(nlp.tags)
+                        : Collections.emptyList();
+
+                elements.add(new RequirementVariability(reqId, desc, feature.getFeatureName(), lemmas, posTags));
             }
 
             RequirementVariabilityGroup group = new RequirementVariabilityGroup(

@@ -92,6 +92,7 @@ public class RequirementsVariabilityExtractor<V extends IVariant, E extends IVar
         List<RequirementVariabilityGroup> groups = modelGenerator.createVariabilityGroups(
                 featureRoot,
                 requirementsMap,
+                nlpMap,
                 variantLookup
         );
 

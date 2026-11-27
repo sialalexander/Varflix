@@ -1,6 +1,10 @@
 package varflixModel.requirements;
 
 import varflixModel.IVariability;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 public class RequirementVariability implements IVariability {
@@ -8,19 +12,29 @@ public class RequirementVariability implements IVariability {
     private final String requirementId;
     private String description;
     private String featureName;
+    private List<String> lemmas;
+    private List<String> posTags;
 
     public RequirementVariability(String requirementId, String description) {
-        this.requirementId = requirementId;
-        this.description = description;
+        this(requirementId, description, null, Collections.emptyList(), Collections.emptyList());
     }
 
     public RequirementVariability(String requirementId, String description, String featureName) {
+        this(requirementId, description, featureName, Collections.emptyList(), Collections.emptyList());
+    }
+
+    public RequirementVariability(String requirementId,
+                                  String description,
+                                  String featureName,
+                                  List<String> lemmas,
+                                  List<String> posTags) {
         this.requirementId = requirementId;
         this.description = description;
         this.featureName = featureName;
+        this.lemmas = (lemmas != null) ? new ArrayList<>(lemmas) : new ArrayList<>();
+        this.posTags = (posTags != null) ? new ArrayList<>(posTags) : new ArrayList<>();
     }
 
-    //TODO sialalex check if this is the best way to do it
     @Override
     public int getId() {
         return (requirementId != null) ? (requirementId.hashCode() & Integer.MAX_VALUE) : 0;
@@ -54,6 +68,22 @@ public class RequirementVariability implements IVariability {
 
     public void setFeatureName(String featureName) {
         this.featureName = featureName;
+    }
+
+    public List<String> getLemmas() {
+        return Collections.unmodifiableList(lemmas);
+    }
+
+    public void setLemmas(List<String> lemmas) {
+        this.lemmas = (lemmas != null) ? new ArrayList<>(lemmas) : new ArrayList<>();
+    }
+
+    public List<String> getPosTags() {
+        return Collections.unmodifiableList(posTags);
+    }
+
+    public void setPosTags(List<String> posTags) {
+        this.posTags = (posTags != null) ? new ArrayList<>(posTags) : new ArrayList<>();
     }
 
     @Override

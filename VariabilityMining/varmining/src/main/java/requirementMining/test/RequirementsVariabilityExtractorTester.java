@@ -506,6 +506,7 @@ public class RequirementsVariabilityExtractorTester {
         List<RequirementVariabilityGroup> groups = multiGenerator.createVariabilityGroups(
                 multiRoot,
                 rawReqs,
+                nlpMap,
                 variantLookup
         );
 
